@@ -1,42 +1,32 @@
 ![](../../workflows/gds/badge.svg) ![](../../workflows/docs/badge.svg) ![](../../workflows/test/badge.svg) ![](../../workflows/fpga/badge.svg)
 
-# Tiny Tapeout Verilog Project Template
+# Tiny Tapeout GF180 — MCP4921 SPI Ramp Generator
 
 - [Read the documentation for project](docs/info.md)
+- [Changelog of SystemVerilog-to-TinyTapeout adaptations](codes_log.md)
+- [Step-by-step adaptation workflow](workflow.md)
 
-## What is Tiny Tapeout?
+## Overview
 
-Tiny Tapeout is an educational project that aims to make it easier and cheaper than ever to get your digital and analog designs manufactured on a real chip.
+This repository contains an ASIC implementation of a configurable **8 / 10 / 12-bit sawtooth ramp generator** with an **SPI Mode (0,0)** master interface targeting the **Microchip MCP4921** 12-bit DAC, adapted for the **Tiny Tapeout GlobalFoundries 180 nm (`gf180mcuD`)** shuttle using LibreLane.
 
-To learn more and get started, visit https://tinytapeout.com.
+### Top Module & Pinout
 
-## Set up your Verilog project
+- **Top module:** `tt_um_oscarc_507_mcp4921_spi` ([src/project.v](src/project.v))
+- **Submodules:** [src/control.v](src/control.v), [src/div_clk.v](src/div_clk.v), [src/ramp_gen.v](src/ramp_gen.v), [src/shift_reg.v](src/shift_reg.v)
 
-1. Add your Verilog files to the `src` folder.
-2. Edit the [info.yaml](info.yaml) and update information about your project, paying special attention to the `source_files` and `top_module` properties. If you are upgrading an existing Tiny Tapeout project, check out our [online info.yaml migration tool](https://tinytapeout.github.io/tt-yaml-upgrade-tool/).
-3. Edit [docs/info.md](docs/info.md) and add a description of your project.
-4. Adapt the testbench to your design. See [test/README.md](test/README.md) for more information.
+| Pin | Name | Direction | Function |
+| :--- | :--- | :--- | :--- |
+| `ui_in[1:0]` | `RES_SEL[1:0]` | Input | `00` = 8-bit, `01` = 10-bit, `10`/`11` = 12-bit |
+| `uo_out[0]` | `SPI_CS_N` | Output | Active-low Chip Select |
+| `uo_out[1]` | `SPI_SDI` | Output | Serial Data Output (MOSI) |
+| `uo_out[2]` | `SPI_SCK` | Output | Serial Clock (`clk / 8`) |
 
-The GitHub action will automatically build the ASIC files using [LibreLane](https://www.zerotoasiccourse.com/terminology/librelane/).
+## Verification
 
-## Enable GitHub actions to build the results page
-
-- [Enabling GitHub Pages](https://tinytapeout.com/faq/#my-github-action-is-failing-on-the-pages-part)
-
-## Resources
-
-- [FAQ](https://tinytapeout.com/faq/)
-- [Digital design lessons](https://tinytapeout.com/digital_design/)
-- [Learn how semiconductors work](https://tinytapeout.com/siliwiz/)
-- [Join the community](https://tinytapeout.com/discord)
-- [Build your design locally](https://www.tinytapeout.com/guides/local-hardening/)
-
-## What next?
-
-- [Submit your design to the next shuttle](https://app.tinytapeout.com/).
-- Edit [this README](README.md) and explain your design, how it works, and how to test it.
-- Share your project on your social network of choice:
-  - LinkedIn [#tinytapeout](https://www.linkedin.com/search/results/content/?keywords=%23tinytapeout) [@TinyTapeout](https://www.linkedin.com/company/100708654/)
-  - Mastodon [#tinytapeout](https://chaos.social/tags/tinytapeout) [@matthewvenn](https://chaos.social/@matthewvenn)
-  - X (formerly Twitter) [#tinytapeout](https://twitter.com/hashtag/tinytapeout) [@tinytapeout](https://twitter.com/tinytapeout)
-  - Bluesky [@tinytapeout.com](https://bsky.app/profile/tinytapeout.com)
+- Testbench wrapper & cocotb suite: [test/tb.v](test/tb.v), [test/test.py](test/test.py), [test/Makefile](test/Makefile)
+- Run RTL simulation (requires `iverilog`, `make`, and `cocotb`):
+  ```sh
+  cd test
+  make -B
+  ```

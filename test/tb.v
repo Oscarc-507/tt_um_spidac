@@ -1,8 +1,10 @@
 `default_nettype none
 `timescale 1ns / 1ps
 
-/* This testbench just instantiates the module and makes some convenient wires
-   that can be driven / tested by the cocotb test.py.
+/* This testbench instantiates the Tiny Tapeout wrapper, exposes readable
+   aliases for the SPI/DAC signals, and includes a passive SPI Mode (0,0)
+   monitor so cocotb and waveform viewers (GTKWave / Surfer) can inspect the
+   decoded DAC configuration and 12-bit analog ramp code.
 */
 module tb ();
 
@@ -27,8 +29,8 @@ module tb ();
   wire VGND = 1'b0;
 `endif
 
-  // Replace tt_um_example with your module name:
-  tt_um_example user_project (
+  // Top-level Tiny Tapeout DUT instantiation:
+  tt_um_oscarc_507_mcp4921_spi user_project (
 
       // Include power ports for the Gate Level test:
 `ifdef GL_TEST
@@ -43,7 +45,37 @@ module tb ();
       .uio_oe (uio_oe),   // IOs: Enable path (active high: 0=input, 1=output)
       .ena    (ena),      // enable - goes high when design is selected
       .clk    (clk),      // clock
-      .rst_n  (rst_n)     // not reset
+      .rst_n  (rst_n)     // active-low reset
   );
 
+  // Readable aliases for external pins (safe for both RTL and Gate-Level sims)
+  wire [1:0] res_sel  = ui_in[1:0];
+  wire       spi_cs_n = uo_out[0];
+  wire       spi_sdi  = uo_out[1];
+  wire       spi_sck  = uo_out[2];
+
+  // Passive SPI Mode (0,0) monitor: samples SDI on posedge SCK, latches on posedge CS_N
+  reg [15:0] spi_rx_shift;
+  reg [3:0]  dac_cfg_rx;
+  reg [11:0] dac_code_rx;
+
+  always @(posedge spi_sck or negedge rst_n) begin
+    if (!rst_n)
+      spi_rx_shift <= 16'd0;
+    else if (!spi_cs_n)
+      spi_rx_shift <= {spi_rx_shift[14:0], spi_sdi};
+  end
+
+  always @(posedge spi_cs_n or negedge rst_n) begin
+    if (!rst_n) begin
+      dac_cfg_rx  <= 4'd0;
+      dac_code_rx <= 12'd0;
+    end else begin
+      dac_cfg_rx  <= spi_rx_shift[15:12];
+      dac_code_rx <= spi_rx_shift[11:0];
+    end
+  end
+
 endmodule
+
+`default_nettype wire
